@@ -1,0 +1,36 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('orders', function (Blueprint $table) {
+            $table->foreignId('assigned_staff_id')
+                ->nullable()
+                ->after('user_id')
+                ->constrained('users')
+                ->onDelete('set null');
+            $table->timestamp('assigned_at')
+                ->nullable()
+                ->after('assigned_staff_id');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('orders', function (Blueprint $table) {
+            $table->dropForeignKeyIfExists(['assigned_staff_id']);
+            $table->dropColumn(['assigned_staff_id', 'assigned_at']);
+        });
+    }
+};
