@@ -66,6 +66,49 @@
         </div>
     </div>
 
+    <!-- Regional Pricing -->
+    @if ($serviceType->regions->count() > 0)
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">
+                <i class="fas fa-map-marker-alt mr-2 text-blue-600"></i> Harga per Daerah
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-blue-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Provinsi</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Harga per Unit</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Selisih dari Harga Default</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        @foreach ($serviceType->regions as $region)
+                            <tr class="hover:bg-blue-50">
+                                <td class="px-6 py-3 text-sm font-semibold text-gray-900">{{ $region->province->name }}</td>
+                                <td class="px-6 py-3 text-sm font-semibold text-green-600">Rp {{ number_format($region->price, 0, ',', '.') }}</td>
+                                <td class="px-6 py-3 text-sm">
+                                    @php
+                                        $diff = $region->price - $serviceType->price;
+                                        $color = $diff > 0 ? 'text-orange-600' : ($diff < 0 ? 'text-green-600' : 'text-gray-600');
+                                    @endphp
+                                    <span class="{{ $color }} font-semibold">
+                                        @if($diff > 0)
+                                            +Rp {{ number_format($diff, 0, ',', '.') }}
+                                        @elseif($diff < 0)
+                                            -Rp {{ number_format(abs($diff), 0, ',', '.') }}
+                                        @else
+                                            Sama (Rp 0)
+                                        @endif
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
     <!-- Recent Orders -->
     <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
         <h2 class="text-xl font-bold text-gray-800 mb-4">

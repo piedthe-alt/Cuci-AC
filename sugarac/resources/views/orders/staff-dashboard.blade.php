@@ -109,9 +109,9 @@
                                     <div class="text-sm text-gray-600">{{ $order->visit_date->format('H:i') }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    @if ($order->status === 'pending')
-                                        <span class="inline-block bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-semibold">
-                                            <i class="fas fa-hourglass-half mr-1"></i> Pending
+                                    @if ($order->status === 'ditugaskan')
+                                        <span class="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
+                                            <i class="fas fa-user-check mr-1"></i> Ditugaskan
                                         </span>
                                     @elseif ($order->status === 'cek_layanan')
                                         <span class="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">
@@ -132,11 +132,23 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <button type="button"
-                                        class="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
-                                        onclick="openDetailModal({{ $order->id }})">
-                                        <i class="fas fa-eye mr-1"></i> Detail
-                                    </button>
+                                    @if($order->status === 'ditugaskan')
+                                        <a href="{{ route('orders.service-check-form', $order) }}" class="inline-flex items-center px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition text-sm">
+                                            <i class="fas fa-search mr-1"></i> Cek Layanan
+                                        </a>
+                                    @elseif($order->status === 'cek_layanan')
+                                        <a href="{{ route('orders.work-progress-form', $order) }}" class="inline-flex items-center px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition text-sm">
+                                            <i class="fas fa-wrench mr-1"></i> Mulai Kerja
+                                        </a>
+                                    @elseif($order->status === 'pengerjaan')
+                                        <a href="{{ route('orders.payment-form', $order) }}" class="inline-flex items-center px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm">
+                                            <i class="fas fa-money-bill mr-1"></i> Pembayaran
+                                        </a>
+                                    @else
+                                        <a href="{{ route('orders.show', $order) }}" class="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm">
+                                            <i class="fas fa-eye mr-1"></i> Lihat Detail
+                                        </a>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -158,121 +170,4 @@
     </div>
 </div>
 
-<!-- Detail Modal -->
-<div id="detailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div class="sticky top-0 bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 class="text-xl font-bold text-gray-800">Detail Pesanan</h2>
-            <button type="button" onclick="closeDetailModal()" class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times text-2xl"></i>
-            </button>
-        </div>
-
-        <div id="modalContent" class="p-6">
-            <!-- Content will be loaded here -->
-        </div>
-    </div>
-</div>
-
-<script>
-function openDetailModal(orderId) {
-    const modal = document.getElementById('detailModal');
-    const modalContent = document.getElementById('modalContent');
-
-    // Find the row
-    const table = document.querySelector('table');
-    const rows = table.querySelectorAll('tbody tr');
-    let orderData = null;
-
-    rows.forEach(row => {
-        if (row.querySelector('td:first-child').textContent.includes(orderId)) {
-            const cells = row.querySelectorAll('td');
-            orderData = {
-                id: orderId,
-                customer: cells[1].textContent,
-                service: cells[2].textContent,
-                address: cells[3].textContent,
-                schedule: cells[4].textContent,
-                status: cells[5].textContent
-            };
-        }
-    });
-
-    if (orderData) {
-        // Build modal content from table data
-        const html = `
-            <div class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-gray-50 p-4 rounded">
-                        <p class="text-gray-600 text-sm">ID Pesanan</p>
-                        <p class="font-bold text-lg">#${orderData.id}</p>
-                    </div>
-                    <div class="bg-blue-50 p-4 rounded">
-                        <p class="text-gray-600 text-sm">Status</p>
-                        <p class="font-semibold">${orderData.status}</p>
-                    </div>
-                </div>
-
-                <div class="border-t pt-4">
-                    <h3 class="font-semibold text-gray-800 mb-3">Data Pelanggan</h3>
-                    <div class="space-y-2">
-                        ${orderData.customer}
-                    </div>
-                </div>
-
-                <div class="border-t pt-4">
-                    <h3 class="font-semibold text-gray-800 mb-3">Layanan</h3>
-                    <div class="space-y-2">
-                        ${orderData.service}
-                    </div>
-                </div>
-
-                <div class="border-t pt-4">
-                    <h3 class="font-semibold text-gray-800 mb-3">Lokasi</h3>
-                    <p class="text-gray-700">${orderData.address}</p>
-                </div>
-
-                <div class="border-t pt-4">
-                    <h3 class="font-semibold text-gray-800 mb-3">Jadwal Kunjungan</h3>
-                    <p class="text-gray-700">${orderData.schedule}</p>
-                </div>
-
-                <form method="POST" action="/orders/${orderId}/status" class="border-t pt-4">
-                    <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''}">
-                    <label class="block mb-3">
-                        <span class="text-sm font-semibold text-gray-800">Perbarui Status</span>
-                        <select name="status" class="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="ditugaskan">Ditugaskan</option>
-                            <option value="cek_layanan">Cek Layanan</option>
-                            <option value="pengerjaan">Pengerjaan</option>
-                            <option value="payment">Pembayaran</option>
-                            <option value="selesai">Selesai</option>
-                        </select>
-                    </label>
-                    <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold">
-                        <i class="fas fa-save mr-2"></i> Simpan
-                    </button>
-                </form>
-            </div>
-        `;
-        modalContent.innerHTML = html;
-    }
-
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-}
-
-function closeDetailModal() {
-    const modal = document.getElementById('detailModal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-}
-
-// Close modal when clicking outside
-document.getElementById('detailModal')?.addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeDetailModal();
-    }
-});
-</script>
 @endsection

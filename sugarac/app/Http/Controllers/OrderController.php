@@ -26,21 +26,21 @@ class OrderController extends Controller
     public function index()
     {
         $userId = Auth::id();
-        
+
         // Pesanan yang sedang berjalan (ongoing)
         $ongoingOrders = Order::with('acModel', 'serviceType', 'assignedStaff')
             ->where('user_id', $userId)
             ->whereIn('status', ['menunggu', 'ditugaskan', 'cek_layanan', 'pengerjaan', 'payment'])
             ->latest()
             ->get();
-        
+
         // Pesanan yang sudah selesai (history)
         $completedOrders = Order::with('acModel', 'serviceType', 'assignedStaff', 'rating')
             ->where('user_id', $userId)
             ->where('status', 'selesai')
             ->latest()
             ->paginate(5);
-        
+
         return view('user.dashboard', compact('ongoingOrders', 'completedOrders'));
     }
 
@@ -73,9 +73,19 @@ class OrderController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        // First, check if the selected service has service types
+        $serviceId = $request->input('service_id');
+        $hasServiceTypes = false;
+
+        if ($serviceId) {
+            $service = Service::find($serviceId);
+            $hasServiceTypes = $service && $service->serviceTypes()->count() > 0;
+        }
+
+        // Build validation rules based on whether service has types
+        $rules = [
             'ac_model_id' => 'required|exists:ac_models,id',
-            'service_type_id' => 'required|exists:service_types,id',
+            'service_type_id' => $hasServiceTypes ? 'required|exists:service_types,id' : 'nullable|exists:service_types,id',
             'units' => 'required|integer|min:1',
             'phone' => 'required|string',
             'address' => 'required|string',
@@ -83,11 +93,16 @@ class OrderController extends Controller
             'longitude' => 'nullable|numeric',
             'visit_date' => 'required|date_format:Y-m-d H:i',
             'notes' => 'nullable|string',
-        ]);
+        ];
+
+        $validated = $request->validate($rules);
 
         // Hitung total harga
-        $serviceType = ServiceType::findOrFail($request->service_type_id);
-        $totalPrice = $serviceType->price * $request->units;
+        $totalPrice = 0;
+        if ($validated['service_type_id']) {
+            $serviceType = ServiceType::findOrFail($validated['service_type_id']);
+            $totalPrice = $serviceType->price * $request->units;
+        }
 
         $order = Order::create(array_merge($validated, [
             'total_price' => $totalPrice,
@@ -135,9 +150,19 @@ class OrderController extends Controller
             return redirect()->back()->with('error', 'Hanya pesanan dengan status menunggu yang dapat diperbarui');
         }
 
-        $validated = $request->validate([
+        // First, check if the selected service has service types
+        $serviceId = $request->input('service_id');
+        $hasServiceTypes = false;
+
+        if ($serviceId) {
+            $service = Service::find($serviceId);
+            $hasServiceTypes = $service && $service->serviceTypes()->count() > 0;
+        }
+
+        // Build validation rules based on whether service has types
+        $rules = [
             'ac_model_id' => 'required|exists:ac_models,id',
-            'service_type_id' => 'required|exists:service_types,id',
+            'service_type_id' => $hasServiceTypes ? 'required|exists:service_types,id' : 'nullable|exists:service_types,id',
             'units' => 'required|integer|min:1',
             'phone' => 'required|string',
             'address' => 'required|string',
@@ -145,11 +170,16 @@ class OrderController extends Controller
             'longitude' => 'nullable|numeric',
             'visit_date' => 'required|date_format:Y-m-d H:i',
             'notes' => 'nullable|string',
-        ]);
+        ];
+
+        $validated = $request->validate($rules);
 
         // Hitung total harga
-        $serviceType = ServiceType::findOrFail($request->service_type_id);
-        $totalPrice = $serviceType->price * $request->units;
+        $totalPrice = 0;
+        if ($validated['service_type_id']) {
+            $serviceType = ServiceType::findOrFail($validated['service_type_id']);
+            $totalPrice = $serviceType->price * $request->units;
+        }
 
         $order->update(array_merge($validated, [
             'total_price' => $totalPrice,

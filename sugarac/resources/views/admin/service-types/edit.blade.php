@@ -71,6 +71,48 @@
                     <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
                 @enderror
             </div>
+
+            <!-- Regional Pricing Section -->
+            <div class="border-t pt-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-map-marker-alt mr-2 text-blue-600"></i>Harga per Daerah (Opsional)
+                        </h3>
+                        <p class="text-sm text-gray-600 mt-1">Atur harga khusus untuk setiap provinsi. Jika tidak diatur, akan menggunakan harga default di atas.</p>
+                    </div>
+                    <button type="button" id="addRegionBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold">
+                        <i class="fas fa-plus mr-1"></i>Tambah Provinsi
+                    </button>
+                </div>
+
+                <!-- Region Prices Container -->
+                <div id="regionPricesContainer" class="space-y-4 mt-4">
+                    <!-- Existing regions will be populated here -->
+                    @forelse($serviceType->regions as $region)
+                        <div class="region-price-row flex gap-4 items-end p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
+                                <select class="province_id w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" required>
+                                    <option value="">-- Pilih Provinsi --</option>
+                                    @foreach($provinces as $province)
+                                        <option value="{{ $province->id }}" {{ $region->province_id == $province->id ? 'selected' : '' }}>{{ $province->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Harga (Rp)</label>
+                                <input type="number" class="price_value w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" value="{{ $region->price }}" placeholder="0" step="0.01" min="0" required>
+                            </div>
+                            <button type="button" class="removeRegionBtn px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    @empty
+                        <!-- Empty container if no regions -->
+                    @endforelse
+                </div>
+            </div>
         </div>
 
         <!-- Action Buttons -->
@@ -84,4 +126,110 @@
         </div>
     </form>
 </div>
+
+<!-- Hidden Template for Regional Price -->
+<template id="regionPriceTemplate">
+    <div class="region-price-row flex gap-4 items-end p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
+            <select class="province_id w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" required>
+                <option value="">-- Pilih Provinsi --</option>
+                @foreach($provinces as $province)
+                    <option value="{{ $province->id }}">{{ $province->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Harga (Rp)</label>
+            <input type="number" class="price_value w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" placeholder="0" step="0.01" min="0" required>
+        </div>
+        <button type="button" class="removeRegionBtn px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+            <i class="fas fa-trash"></i>
+        </button>
+    </div>
+</template>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const template = document.getElementById('regionPriceTemplate');
+    const container = document.getElementById('regionPricesContainer');
+    const addBtn = document.getElementById('addRegionBtn');
+    const form = document.querySelector('form');
+
+    function updateHiddenInputs() {
+        // Clear existing hidden inputs
+        container.querySelectorAll('input[name^="region_prices"], select[name^="region_prices"]').forEach(el => {
+            if (!el.closest('.region-price-row')) {
+                el.remove();
+            }
+        });
+
+        // Create hidden inputs for each visible row
+        container.querySelectorAll('.region-price-row').forEach((row, index) => {
+            const provinceId = row.querySelector('.province_id').value;
+            const price = row.querySelector('.price_value').value;
+
+            if (provinceId && price) {
+                const provinceInput = document.createElement('input');
+                provinceInput.type = 'hidden';
+                provinceInput.name = 'region_prices[' + index + '][province_id]';
+                provinceInput.value = provinceId;
+
+                const priceInput = document.createElement('input');
+                priceInput.type = 'hidden';
+                priceInput.name = 'region_prices[' + index + '][price]';
+                priceInput.value = price;
+
+                container.appendChild(provinceInput);
+                container.appendChild(priceInput);
+            }
+        });
+    }
+
+    addBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const clone = template.content.cloneNode(true);
+
+        const removeBtn = clone.querySelector('.removeRegionBtn');
+        removeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            this.closest('.region-price-row').remove();
+            updateHiddenInputs();
+        });
+
+        container.appendChild(clone);
+    });
+
+    // Update hidden inputs before form submission
+    form.addEventListener('submit', function(e) {
+        updateHiddenInputs();
+    });
+
+    // Update when select/input changes
+    container.addEventListener('change', function(e) {
+        if (e.target.closest('.region-price-row')) {
+            updateHiddenInputs();
+        }
+    });
+
+    // Update when input value changes
+    container.addEventListener('input', function(e) {
+        if (e.target.closest('.region-price-row')) {
+            updateHiddenInputs();
+        }
+    });
+
+    // Handle remove buttons for dynamically added rows
+    container.addEventListener('click', function(e) {
+        if (e.target.closest('.removeRegionBtn')) {
+            e.preventDefault();
+            e.target.closest('.region-price-row').remove();
+            updateHiddenInputs();
+        }
+    });
+
+    // Initialize hidden inputs on page load
+    updateHiddenInputs();
+});
+</script>
 @endsection

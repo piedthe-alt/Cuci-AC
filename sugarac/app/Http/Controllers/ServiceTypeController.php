@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Province;
 use App\Models\Service;
 use App\Models\ServiceType;
+use App\Models\ServiceTypeRegion;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
 
@@ -19,7 +21,7 @@ class ServiceTypeController extends BaseController
      */
     public function index()
     {
-        $serviceTypes = ServiceType::with('service')->paginate(15);
+        $serviceTypes = ServiceType::with('service', 'regions.province')->paginate(15);
         return view('admin.service-types.index', compact('serviceTypes'));
     }
 
@@ -30,7 +32,8 @@ class ServiceTypeController extends BaseController
     {
         $services = Service::all();
         $selectedService = $serviceId ? Service::find($serviceId) : null;
-        return view('admin.service-types.create', compact('services', 'selectedService'));
+        $provinces = Province::all();
+        return view('admin.service-types.create', compact('services', 'selectedService', 'provinces'));
     }
 
     /**
@@ -43,9 +46,35 @@ class ServiceTypeController extends BaseController
             'name' => 'required|string',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
+            'region_prices' => 'sometimes|array',
+            'region_prices.*.province_id' => 'nullable|exists:provinces,id',
+            'region_prices.*.price' => 'nullable|numeric|min:0',
         ]);
 
-        ServiceType::create($validated);
+        $serviceType = ServiceType::create([
+            'service_id' => $validated['service_id'],
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'price' => $validated['price'],
+        ]);
+
+        // Save region-specific prices
+        if (!empty($validated['region_prices'])) {
+            foreach ($validated['region_prices'] as $regionPrice) {
+                if (!empty($regionPrice['province_id']) && !empty($regionPrice['price'])) {
+                    ServiceTypeRegion::updateOrCreate(
+                        [
+                            'service_type_id' => $serviceType->id,
+                            'province_id' => $regionPrice['province_id'],
+                        ],
+                        [
+                            'price' => $regionPrice['price'],
+                        ]
+                    );
+                }
+            }
+        }
+
         return redirect()->route('admin.service-types.index')->with('success', 'Jenis layanan berhasil ditambahkan');
     }
 
@@ -54,6 +83,7 @@ class ServiceTypeController extends BaseController
      */
     public function show(ServiceType $serviceType)
     {
+        $serviceType->load('service', 'regions.province');
         return view('admin.service-types.show', compact('serviceType'));
     }
 
@@ -63,7 +93,10 @@ class ServiceTypeController extends BaseController
     public function edit(ServiceType $serviceType)
     {
         $services = Service::all();
-        return view('admin.service-types.edit', compact('serviceType', 'services'));
+        $provinces = Province::all();
+        $serviceType->load('regions.province');
+
+        return view('admin.service-types.edit', compact('serviceType', 'services', 'provinces'));
     }
 
     /**
@@ -76,9 +109,39 @@ class ServiceTypeController extends BaseController
             'name' => 'required|string',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
+            'region_prices' => 'sometimes|array',
+            'region_prices.*.province_id' => 'nullable|exists:provinces,id',
+            'region_prices.*.price' => 'nullable|numeric|min:0',
         ]);
 
-        $serviceType->update($validated);
+        $serviceType->update([
+            'service_id' => $validated['service_id'],
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'price' => $validated['price'],
+        ]);
+
+        // Update region-specific prices
+        // First, delete all existing region prices
+        $serviceType->regions()->delete();
+
+        // Add new region prices
+        if (!empty($validated['region_prices'])) {
+            foreach ($validated['region_prices'] as $regionPrice) {
+                if (!empty($regionPrice['province_id']) && !empty($regionPrice['price'])) {
+                    ServiceTypeRegion::updateOrCreate(
+                        [
+                            'service_type_id' => $serviceType->id,
+                            'province_id' => $regionPrice['province_id'],
+                        ],
+                        [
+                            'price' => $regionPrice['price'],
+                        ]
+                    );
+                }
+            }
+        }
+
         return redirect()->route('admin.service-types.show', $serviceType)->with('success', 'Jenis layanan berhasil diperbarui');
     }
 
