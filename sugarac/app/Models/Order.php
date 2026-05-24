@@ -21,11 +21,19 @@ class Order extends Model
         'total_price',
         'status',
         'assigned_at',
+        'service_checked_at',
+        'work_completed_at',
+        'payment_completed_at',
+        'rated_at',
     ];
 
     protected $casts = [
         'visit_date' => 'datetime',
         'assigned_at' => 'datetime',
+        'service_checked_at' => 'datetime',
+        'work_completed_at' => 'datetime',
+        'payment_completed_at' => 'datetime',
+        'rated_at' => 'datetime',
         'total_price' => 'decimal:2',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
@@ -51,6 +59,27 @@ class Order extends Model
         return $this->belongsTo(ServiceType::class);
     }
 
+    // Relationships untuk workflow
+    public function photos()
+    {
+        return $this->hasMany(OrderPhoto::class);
+    }
+
+    public function addOns()
+    {
+        return $this->hasMany(OrderAddOn::class);
+    }
+
+    public function payment()
+    {
+        return $this->hasOne(OrderPayment::class);
+    }
+
+    public function rating()
+    {
+        return $this->hasOne(OrderRating::class);
+    }
+
     // Scope untuk filtering order user
     public function scopeOfUser($query, $userId)
     {
@@ -73,5 +102,37 @@ class Order extends Model
     public function scopeAssigned($query)
     {
         return $query->whereNotNull('assigned_staff_id');
+    }
+
+    /**
+     * Get status label in Indonesian
+     */
+    public function getStatusLabel()
+    {
+        return match($this->status) {
+            'menunggu' => 'Menunggu',
+            'ditugaskan' => 'Ditugaskan',
+            'cek_layanan' => 'Cek Layanan',
+            'pengerjaan' => 'Pengerjaan',
+            'payment' => 'Pembayaran',
+            'selesai' => 'Selesai',
+            default => $this->status,
+        };
+    }
+
+    /**
+     * Get status badge CSS class
+     */
+    public function getStatusBadgeClass()
+    {
+        return match($this->status) {
+            'menunggu' => 'bg-yellow-100 text-yellow-800',
+            'ditugaskan' => 'bg-blue-100 text-blue-800',
+            'cek_layanan' => 'bg-purple-100 text-purple-800',
+            'pengerjaan' => 'bg-orange-100 text-orange-800',
+            'payment' => 'bg-red-100 text-red-800',
+            'selesai' => 'bg-green-100 text-green-800',
+            default => 'bg-gray-100 text-gray-800',
+        };
     }
 }

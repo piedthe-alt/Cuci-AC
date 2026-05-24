@@ -6,6 +6,10 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\AcModelController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceTypeController;
+use App\Http\Controllers\AddOnController;
+use App\Http\Controllers\OwnerController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -26,9 +30,7 @@ Route::middleware('guest')->group(function () {
 
 // Protected Routes for Regular Users
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -51,7 +53,41 @@ Route::middleware('auth')->group(function () {
     Route::post('/orders/{order}/status', [OrderController::class, 'updateStatus'])
         ->middleware('is-staff')
         ->name('orders.update-status');
-});
+
+    // Order Workflow Routes
+    // Service Check (Cek Layanan) - Staff
+    Route::middleware('is-staff')->group(function () {
+        Route::get('/orders/{order}/service-check', [OrderController::class, 'showServiceCheckForm'])->name('orders.service-check-form');
+        Route::post('/orders/{order}/service-check', [OrderController::class, 'submitServiceCheck'])->name('orders.submit-service-check');
+
+        // Work Progress (Pengerjaan) - Staff
+        Route::get('/orders/{order}/work-progress', [OrderController::class, 'showWorkProgressForm'])->name('orders.work-progress-form');
+        Route::post('/orders/{order}/work-progress', [OrderController::class, 'submitWorkProgress'])->name('orders.submit-work-progress');
+    });
+
+    // Payment - Both Staff and Customer
+    Route::get('/orders/{order}/payment', [OrderController::class, 'showPaymentForm'])->name('orders.payment-form');
+    Route::post('/orders/{order}/payment', [OrderController::class, 'submitPayment'])->name('orders.submit-payment');
+
+    // Rating (Selesai) - Customer only
+    Route::middleware('auth')->group(function () {
+        Route::get('/orders/{order}/rating', [OrderController::class, 'showRatingForm'])->name('orders.rating-form');
+        Route::post('/orders/{order}/rating', [OrderController::class, 'submitRating'])->name('orders.submit-rating');
+    });
+
+    // Profile Routes
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [ProfileController::class, 'show'])->name('show');
+        Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
+        Route::put('/', [ProfileController::class, 'update'])->name('update');
+        Route::get('/change-password', [ProfileController::class, 'changePassword'])->name('change-password');
+        Route::post('/change-password', [ProfileController::class, 'updatePassword'])->name('update-password');
+    });
+
+    // Role-specific Dashboards
+    Route::get('/staff-profile', [ProfileController::class, 'staffProfile'])->middleware('is-staff')->name('staff.profile');
+    Route::get('/user-profile', [ProfileController::class, 'userProfile'])->middleware('is-user')->name('user.profile');
+}); // Close auth middleware group
 
 // Admin Routes
 Route::middleware(['auth', 'is-admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -77,4 +113,14 @@ Route::middleware(['auth', 'is-admin'])->prefix('admin')->name('admin.')->group(
 
     // Service Type Management (Child/Anak)
     Route::resource('service-types', ServiceTypeController::class);
+
+    // Add-on Management
+    Route::resource('add-ons', AddOnController::class);
+});
+
+// Owner Routes
+Route::middleware(['auth', 'is-owner'])->prefix('owner')->name('owner.')->group(function () {
+    Route::get('/dashboard', [OwnerController::class, 'dashboard'])->name('dashboard');
+    Route::get('/staff-ratings', [OwnerController::class, 'staffRatings'])->name('staff-ratings');
+    Route::get('/financial-report', [OwnerController::class, 'financialReport'])->name('financial-report');
 });

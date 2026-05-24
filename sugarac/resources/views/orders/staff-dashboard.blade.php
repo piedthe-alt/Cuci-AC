@@ -50,12 +50,12 @@
             </div>
         </div>
 
-        <!-- Completed -->
+        <!-- Selesai -->
         <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-600 text-sm font-medium">Selesai</p>
-                    <p class="text-3xl font-bold text-gray-900 mt-2">{{ $stats['completed'] }}</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">{{ $stats['selesai'] }}</p>
                 </div>
                 <i class="fas fa-check-circle text-4xl text-green-500 opacity-10"></i>
             </div>
@@ -113,11 +113,19 @@
                                         <span class="inline-block bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-semibold">
                                             <i class="fas fa-hourglass-half mr-1"></i> Pending
                                         </span>
-                                    @elseif ($order->status === 'confirmed')
-                                        <span class="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-semibold">
-                                            <i class="fas fa-check-double mr-1"></i> Dikonfirmasi
+                                    @elseif ($order->status === 'cek_layanan')
+                                        <span class="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-semibold">
+                                            <i class="fas fa-search mr-1"></i> Cek Layanan
                                         </span>
-                                    @elseif ($order->status === 'completed')
+                                    @elseif ($order->status === 'pengerjaan')
+                                        <span class="inline-block bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-semibold">
+                                            <i class="fas fa-wrench mr-1"></i> Pengerjaan
+                                        </span>
+                                    @elseif ($order->status === 'payment')
+                                        <span class="inline-block bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-semibold">
+                                            <i class="fas fa-money-bill mr-1"></i> Pembayaran
+                                        </span>
+                                    @elseif ($order->status === 'selesai')
                                         <span class="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">
                                             <i class="fas fa-check-circle mr-1"></i> Selesai
                                         </span>
@@ -234,8 +242,11 @@ function openDetailModal(orderId) {
                     <label class="block mb-3">
                         <span class="text-sm font-semibold text-gray-800">Perbarui Status</span>
                         <select name="status" class="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="confirmed">Dikonfirmasi</option>
-                            <option value="completed">Selesai</option>
+                            <option value="ditugaskan">Ditugaskan</option>
+                            <option value="cek_layanan">Cek Layanan</option>
+                            <option value="pengerjaan">Pengerjaan</option>
+                            <option value="payment">Pembayaran</option>
+                            <option value="selesai">Selesai</option>
                         </select>
                     </label>
                     <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold">

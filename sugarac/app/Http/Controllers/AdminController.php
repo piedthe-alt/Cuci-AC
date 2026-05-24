@@ -140,21 +140,23 @@ class AdminController extends Controller
      */
     public function workManagement()
     {
-        // Get assigned orders by status
-        $pendingOrders = Order::assigned()
-            ->where('status', 'pending')
+        // Get orders by status
+        $waitingOrders = Order::where('status', 'menunggu')
             ->with('user', 'acModel', 'serviceType', 'assignedStaff')
             ->orderBy('visit_date', 'asc')
             ->get();
 
-        $confirmedOrders = Order::assigned()
-            ->where('status', 'confirmed')
+        $assignedOrders = Order::where('status', 'ditugaskan')
             ->with('user', 'acModel', 'serviceType', 'assignedStaff')
             ->orderBy('visit_date', 'asc')
             ->get();
 
-        $completedOrders = Order::assigned()
-            ->where('status', 'completed')
+        $inProgressOrders = Order::whereIn('status', ['cek_layanan', 'pengerjaan', 'payment'])
+            ->with('user', 'acModel', 'serviceType', 'assignedStaff')
+            ->orderBy('visit_date', 'asc')
+            ->get();
+
+        $completedOrders = Order::where('status', 'selesai')
             ->with('user', 'acModel', 'serviceType', 'assignedStaff')
             ->orderByDesc('updated_at')
             ->limit(20)
@@ -162,45 +164,44 @@ class AdminController extends Controller
 
         // Calculate statistics
         $stats = [
-            'total_assigned' => Order::assigned()->count(),
-            'pending' => $pendingOrders->count(),
-            'confirmed' => $confirmedOrders->count(),
+            'total_assigned' => $assignedOrders->count() + $inProgressOrders->count() + $completedOrders->count(),
+            'pending' => $waitingOrders->count(),
+            'confirmed' => $inProgressOrders->count(),
             'completed' => $completedOrders->count(),
             'active_staff' => User::where('role', 'staff')
-                ->whereHas('assignedOrders')
-                ->distinct()
+                ->where('is_active', true)
                 ->count(),
         ];
 
-        // Get active staff members (those with assigned orders)
+        // Get active staff members
         $activeStaff = User::where('role', 'staff')
-            ->whereHas('assignedOrders')
+            ->where('is_active', true)
             ->with(['assignedOrders' => function ($query) {
-                $query->select('assigned_staff_id', 'status')->distinct();
+                $query->select('id', 'assigned_staff_id', 'status');
             }])
             ->get();
 
         // Calculate per-staff statistics
         $staffStats = [];
         foreach ($activeStaff as $staff) {
+            $staffOrders = Order::assignedTo($staff->id)->get();
             $staffStats[$staff->id] = [
-                'total' => Order::assignedTo($staff->id)->count(),
-                'pending' => Order::assignedTo($staff->id)->where('status', 'pending')->count(),
-                'confirmed' => Order::assignedTo($staff->id)->where('status', 'confirmed')->count(),
-                'completed' => Order::assignedTo($staff->id)->where('status', 'completed')->count(),
+                'total' => $staffOrders->count(),
+                'assigned' => $staffOrders->where('status', 'ditugaskan')->count(),
+                'in_progress' => $staffOrders->whereIn('status', ['cek_layanan', 'pengerjaan', 'payment'])->count(),
+                'completed' => $staffOrders->where('status', 'selesai')->count(),
             ];
         }
 
         // Get recent activities
-        $recentActivities = Order::assigned()
-            ->with('user', 'acModel', 'serviceType', 'assignedStaff')
+        $recentActivities = Order::with('user', 'acModel', 'serviceType', 'assignedStaff')
             ->orderByDesc('updated_at')
             ->limit(10)
             ->get();
 
         return view('admin.work-management', [
-            'pendingOrders' => $pendingOrders,
-            'confirmedOrders' => $confirmedOrders,
+            'pendingOrders' => $waitingOrders,
+            'confirmedOrders' => $assignedOrders->merge($inProgressOrders),
             'completedOrders' => $completedOrders,
             'stats' => $stats,
             'activeStaff' => $activeStaff,

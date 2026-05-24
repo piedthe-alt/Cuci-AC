@@ -82,6 +82,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is owner
+     */
+    public function isOwner(): bool
+    {
+        return $this->role === 'owner';
+    }
+
+    /**
      * Get all orders for this user
      */
     public function orders()
@@ -95,5 +103,13 @@ class User extends Authenticatable
     public function assignedOrders()
     {
         return $this->hasMany(Order::class, 'assigned_staff_id');
+    }
+
+    /**
+     * Get ratings received from customers (for staff)
+     */
+    public function receivedRatings()
+    {
+        return $this->hasMany(OrderRating::class, 'staff_id');
     }
 }
